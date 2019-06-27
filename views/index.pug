@@ -2,4 +2,50 @@ extends layout
 
 block content
   h1= title
-  p Welcome to #{title}
+
+  div(style="display: flex;justify-content: space-between;")
+    div
+      h3 Successfully saved to DB so far: #{successfullySavedStatements.length}
+      br
+      h3= 'Failed DB validation this go-around:'
+      each items, message in failedDbStatements
+        li= message + ': ' + items.length
+      br
+      h3 Failed to fetch from URLs: #{failedFetchStatements.length}
+      each url in failedFetchStatements
+        li
+          a(href=url)= url
+
+    div
+      a(href='/') Homepage
+      br
+      br
+      a(
+        href='/fetch-statements'
+        class="strikethrough"
+      ) 1. Fetch Statement Data
+      br
+      br
+      a(
+        href='/latest-statements'
+        class="strikethrough"
+      ) 2. Fetch Latest Statements
+      br
+      br
+      a(
+        href='/refetch-statements'
+        class="strikethrough"
+      ) 3. Refetch Outstanding Statements
+      br
+      br
+      if !failedFetchStatementsModified
+        a(
+          href='/refetch-statements?q=mod'
+          class="strikethrough"
+        ) 3. Refetch Outstanding Statements - Modify
+      br
+      br
+      a(href='/calc-days') 4. Calculate Statement Days
+      br
+      br
+      a(href='/get-numbers') 5. Get Numbers from Statements
