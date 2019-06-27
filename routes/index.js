@@ -116,7 +116,7 @@ router.get('/fetch-statements', function(req, res, next) {
 
 
 /**************************************
-  2. Fetch Latest Statements
+  1. Fetch Latest Statements
 ***************************************/
 
 router.get('/latest-statements', function(req, res, next) {
@@ -157,17 +157,17 @@ router.get('/latest-statements', function(req, res, next) {
           let dbSavePromises = createStatementDbPromises(s);
 
           Promise.all(dbSavePromises)
-            .then(() => renderPage(res, "2) Fetched Latest Statements from URLs - SUCCESS fetch and saved to db"))
-            .catch(() => renderPage(res, "2) Fetched Latest Statements from URLs - FAILED to save to db"))
+            .then(() => renderPage(res, "1) Fetched Latest Statements from URLs - SUCCESS fetch and saved to db"))
+            .catch(() => renderPage(res, "1) Fetched Latest Statements from URLs - FAILED to save to db"))
         })
-        .catch(() => renderPage(res, "2) Fetched Latest Statements from URLs - FAILED to fetch from URLs"))
+        .catch(() => renderPage(res, "1) Fetched Latest Statements from URLs - FAILED to fetch from URLs"))
     })
-    .catch(() => renderPage(res, "2) failed to get HTML page to create latest statement links"))
+    .catch(() => renderPage(res, "1) failed to get HTML page to create latest statement links"))
 })
 
 
 /**************************************
-  3. Refetch Outstanding Statements
+  2. Refetch Outstanding Statements
 ***************************************/
 
 router.get('/refetch-statements', function(req, res, next) {
@@ -193,19 +193,19 @@ router.get('/refetch-statements', function(req, res, next) {
         failedDbStatements = {};
 
         Promise.all(dbSavePromises)
-          .then(() => renderPage(res, "3) Refetched Statement Data from URLs - SUCCESS fetch and saved to db"))
-          .catch(() => renderPage(res, "3) Refetched Statement Data from URLs - FAILED to save to db"))
+          .then(() => renderPage(res, "2) Refetched Statement Data from URLs - SUCCESS fetch and saved to db"))
+          .catch(() => renderPage(res, "2) Refetched Statement Data from URLs - FAILED to save to db"))
       })
-      .catch(() => renderPage(res, "3) Refetched Statement Data from URLs - FAILED to refetch from URLs"))
+      .catch(() => renderPage(res, "2) Refetched Statement Data from URLs - FAILED to refetch from URLs"))
   } 
   else {
-    renderPage(res, "3) No refetch necessary - no existing failed statements")
+    renderPage(res, "2) No refetch necessary - no existing failed statements")
   }
 })
 
 
 /**************************************
-  Other Work
+  3. Set Numbers
 ***************************************/
 
 const setStatementDay = function(statements) {
@@ -224,6 +224,36 @@ const setStatementDay = function(statements) {
   })
 }
 
+const setStatementDayLatest = function(statements) {
+  let sMonth;
+  let sDay;
+  let modifiedStatements = [];
+
+  for (let i = 0; i < statements.length; i++) {
+    let { date, month, html, statementDay } = statements[i];
+
+    if (!statementDay) {
+      if (!sMonth) {
+        let priorDay = statements[i-1].statementDay;
+
+        sMonth = priorDay[0] + priorDay[1];
+        sDay = parseInt(priorDay.match(/\d+$/gm)[0]);
+      }
+      
+      sDay = (!sDay || sMonth !== month) ? 1 : sDay += 1;
+      sMonth = (!sMonth || sMonth !== month) ? month : sMonth;
+  
+      modifiedStatements.push({
+        html,
+        date,
+        statementDay: sMonth + '-' + sDay,
+      })
+    }
+  }
+
+  return modifiedStatements;
+}
+
 const setNumbers = function(statements) {
   return statements.map(statement => {
     let snapLine = statement.html.match(/Supple\. Nutrition Assist\. Program \(SNAP\).+/g) ||
@@ -237,26 +267,30 @@ const setNumbers = function(statements) {
   })
 }
 
-router.get('/get-numbers', function(req, res, next) {
-  RawStatements.findAll({order: [['date', 'ASC']]})
+router.get('/set-numbers', function(req, res) {
+  let setLatest = Object.keys(req.query).length;
+  let order = setLatest ? {order: [['date', 'DESC']], limit: 50} : {order: [['date', 'ASC']]}
+
+  RawStatements.findAll(order)
     .then(s => {
-      let statements = setStatementDay(s);
-      statements = setNumbers(statements);
+      // Pull needed numbers from statements and prepare to save
+      let statements = setLatest ? s.reverse() : s;
+      statements     = setLatest ? setStatementDayLatest(statements) : setStatementDay(statements);
+      statements     = setNumbers(statements);
 
-      statements.forEach(statement =>
-        Statements.create(statement)
-          .then(success => console.log('success saving statement'))
-          .catch(err => console.log('err saving statement', err))
+      let updateStatementPromises = statements.map(statement => 
+        RawStatements.update(statement, { where: { date: statement.date } })
+          .then(success => {})
+          .catch(err => {})
       )
+
+      // Save to db
+      Promise.all(updateStatementPromises)
+        .then(() => renderPage(res, "3) Set Numbers for Latest Statements - SUCCESS update db"))
+        .catch(() => renderPage(res, "3) Set Numbers for Latest Statements - FAILED update db"))
     })
-    .catch(err => console.log('failed to get statements from db'))
-
-
-  /**************************************
-    Render page.
-  ***************************************/
-  res.render('index', { title: "3) Got Numbers from Statements in DB" });
-});
+    .catch((err) => renderPage(res, "3) Set Numbers for Latest Statements - FAILED to get statements from db"))
+})
 
 
 /**************************************

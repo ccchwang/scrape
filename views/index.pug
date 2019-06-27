@@ -22,30 +22,44 @@ block content
       br
       a(
         href='/fetch-statements'
-        class="strikethrough"
+        class=""
       ) 1. Fetch Statement Data
       br
       br
       a(
-        href='/latest-statements'
-        class="strikethrough"
-      ) 2. Fetch Latest Statements
-      br
-      br
-      a(
         href='/refetch-statements'
-        class="strikethrough"
-      ) 3. Refetch Outstanding Statements
+        class=""
+      ) 2. Refetch Outstanding Statements
       br
       br
       if !failedFetchStatementsModified
         a(
           href='/refetch-statements?q=mod'
-          class="strikethrough"
-        ) 3. Refetch Outstanding Statements - Modify
+          class=""
+        ) 2. Refetch Outstanding Statements - Modify
       br
       br
-      a(href='/calc-days') 4. Calculate Statement Days
+      a(href='/set-numbers') 3. Set Numbers (statement days, SNAP, etc)
       br
       br
-      a(href='/get-numbers') 5. Get Numbers from Statements
+      //- a(href='/hash-statement-days') 5. Create Hash Map of Statement Days
+      //- br
+      //- br
+      //- a(href='/get-priors') 6. Find Year Priors and Resave
+      //- br
+      //- br
+
+      h2 Getting Latest
+      a(
+        href='/latest-statements'
+        class=""
+      ) 1. Fetch Latest Statements
+      br
+      br
+      a(
+        href='/refetch-statements'
+        class=""
+      ) 2. Refetch Outstanding Statements
+      br
+      br
+      a(href='/set-numbers?q=latest') 3. Set Numbers (statement days, SNAP, etc)
