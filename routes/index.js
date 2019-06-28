@@ -13,6 +13,7 @@ let failedFetchStatements = []; // Should be 4384
 let failedFetchStatementsModified = false;
 let failedDbStatements = {};
 let successfullySavedStatements = [];
+let hashed = {};
 
 const renderPage = function(res, title) {
   let failedFetch = failedFetchStatements.map(statement => statement.url).sort();
@@ -290,6 +291,65 @@ router.get('/set-numbers', function(req, res) {
         .catch(() => renderPage(res, "3) Set Numbers for Latest Statements - FAILED update db"))
     })
     .catch((err) => renderPage(res, "3) Set Numbers for Latest Statements - FAILED to get statements from db"))
+})
+
+
+/**************************************
+  4. Create Hash Map of Statement Days
+***************************************/
+
+router.get('/hash-days', function(req, res) {
+  hashed = {};
+
+  RawStatements.findAll()
+    .then(statements => {
+      statements.forEach(statement => {
+        let day = statement.statementDay;
+
+        hashed[day] = hashed[day] ? hashed[day] : [];
+        hashed[day].push(statement);
+      })
+
+      renderPage(res, `4) Created hash map: ${Object.keys(hashed).length} statement days`);
+    })
+    .catch(() => console.log('Hash days err'))
+})
+
+
+/**************************************
+  5. Find Year Priors and Resave Statements
+***************************************/
+
+router.get('/get-priors', function(req, res) {
+  RawStatements.findAll()
+    .then(statements => {
+      let updateStatementPromises = [];
+
+      // Create update promises
+      statements.forEach(({ date, statementDay, snap }) => {
+        let yearPrior = date.getFullYear() - 1;
+        let prior = hashed[statementDay].filter(s => s.date.getFullYear() === yearPrior)[0];
+
+        if (prior) {
+          let yearPriorNums = {
+            snapPriorYear : prior.snap,
+            snapYoY       : snap - prior.snap
+          }
+
+          updateStatementPromises.push(
+            RawStatements.update(yearPriorNums, { where: { date } })
+              .then(success => {})
+              .catch(err => {})
+          )
+        }
+      })
+
+      // Save to db
+      Promise.all(updateStatementPromises)
+        .then(() => renderPage(res, "5) Find Year Prior and Resave - SUCCESS update db"))
+        .catch(() => renderPage(res, "5) Find Year Prior and Resave - FAILED update db"))
+    })
+    .catch(() => renderPage(res, `5) Failed to get/save priors: ${Object.keys(hashed).length} hashed statement days`))
 })
 
 
