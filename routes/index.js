@@ -2,7 +2,7 @@ var express = require('express');
 var router = express.Router();
 const rp = require('request-promise');
 const $ = require('cheerio');
-var { RawStatements, Statements } = require('../database/index')
+var { Statements } = require('../database/index')
 
 
 /**************************************
@@ -45,7 +45,7 @@ const createStatementFetchPromises = function(possibleStatements) {
 
 const createStatementDbPromises = function(statements) {
   return statements.filter(s => s !== undefined).map(statement => 
-    RawStatements.create(statement)
+    Statements.create(statement)
       .then(success => successfullySavedStatements.push(success))
       .catch(err => {
         let errorMsg = err.message.replace(' ', '_');
@@ -65,7 +65,7 @@ router.get('/fetch-statements', function(req, res, next) {
   /**************************************
     Get all possible statements.
   ***************************************/
-  let startDate = new Date('1/7/1998');
+  let startDate = new Date('7/1/2005');
   let endDate = new Date();
 
   let possibleStatements = [];
@@ -206,7 +206,7 @@ router.get('/refetch-statements', function(req, res, next) {
 
 
 /**************************************
-  3. Set Numbers
+  3. Set Statement Days
 ***************************************/
 
 const setStatementDay = function(statements) {
@@ -255,53 +255,118 @@ const setStatementDayLatest = function(statements) {
   return modifiedStatements;
 }
 
-const setNumbers = function(statements) {
-  return statements.map(statement => {
-    let snapLine = statement.html.match(/Supple\. Nutrition Assist\. Program \(SNAP\).+/g) ||
-                   statement.html.match(/Food Stamps.+/g);
-
-    let snap = snapLine ? Number(snapLine[0].match(/\S+$/g)[0].replace(',', '')) : 0;
-    statement.snap = snap;
-
-    delete statement.html;
-    return statement;
-  })
-}
-
-router.get('/set-numbers', function(req, res) {
+router.get('/set-days', function(req, res) {
   let setLatest = Object.keys(req.query).length;
   let order = setLatest ? {order: [['date', 'DESC']], limit: 50} : {order: [['date', 'ASC']]}
 
-  RawStatements.findAll(order)
+  Statements.findAll(order)
     .then(s => {
       // Pull needed numbers from statements and prepare to save
       let statements = setLatest ? s.reverse() : s;
       statements     = setLatest ? setStatementDayLatest(statements) : setStatementDay(statements);
-      statements     = setNumbers(statements);
 
       let updateStatementPromises = statements.map(statement => 
-        RawStatements.update(statement, { where: { date: statement.date } })
+        Statements.update(statement, { where: { date: statement.date } })
           .then(success => {})
           .catch(err => {})
       )
 
       // Save to db
       Promise.all(updateStatementPromises)
-        .then(() => renderPage(res, "3) Set Numbers for Latest Statements - SUCCESS update db"))
-        .catch(() => renderPage(res, "3) Set Numbers for Latest Statements - FAILED update db"))
+        .then(() => renderPage(res, "3) Set Statement Day - SUCCESS update db"))
+        .catch(() => renderPage(res, "3) Set Statement Day - FAILED update db"))
     })
-    .catch((err) => renderPage(res, "3) Set Numbers for Latest Statements - FAILED to get statements from db"))
+    .catch((err) => renderPage(res, "3) Set Statement Day - FAILED to get statements from db"))
 })
 
 
 /**************************************
-  4. Create Hash Map of Statement Days
+  4. Set Numbers
+***************************************/
+
+const setNumbers = function(statements) {
+  return statements.map(statement => {
+    let twMTD  = statement.html.match(/Total Withdrawals \(excluding transfers\)\s+\$*\s+\S+\s+\$*\s+\S+/g);
+    let pcrMTD = statement.html.match(/Public Debt Cash Redemp. \(Table III-B\)\s+\$*\s+\S+\s+\$*\s+\S+/g);
+    let twYTD  = statement.html.match(/Total Withdrawals \(excluding transfers\).+/g);
+    let pcrYTD = statement.html.match(/Public Debt Cash Redemp. \(Table III-B\).+/g);
+    
+    let pdci   = statement.html.match(/Public Debt Cash Issues \(Table III-B\).+/g);
+    let its    = statement.html.match(/Interest on Treasury Securities.+/g);
+    let snp    = statement.html.match(/Supple\. Nutrition Assist\. Program \(SNAP\).+/g) ||
+                   statement.html.match(/Food Stamps.+/g);
+    let uib    = statement.html.match(/Unemployment Insurance Benefits.+/g);
+    let wiet   = statement.html.match(/Withheld Income and Employment Taxes.+/g);
+    let cit    = statement.html.match(/Corporation Income Taxes.+/g);
+    let tcf    = statement.html.match(/Total Cash FTD\'s.+/g);
+
+
+    let totalWithdrawalsMTD  = twMTD ? Number(twMTD[0].match(/\S+$/g)[0].replace(/,/g, '')) : null;
+    let publicCashRedempMTD  = pcrMTD ? Number(pcrMTD[0].match(/\S+$/g)[0].replace(/,/g, '')) : null;
+    let totalNetSpendingMTD  = twMTD && pcrMTD ? totalWithdrawalsMTD - publicCashRedempMTD : null;
+    let totalWithdrawalsYTD  = twYTD ? Number(twYTD[0].match(/\S+$/g)[0].replace(/,/g, '')) : null;
+    let publicCashRedempYTD  = pcrYTD ? Number(pcrYTD[0].match(/\S+$/g)[0].replace(/,/g, '')) : null;
+    let totalNetSpendingYTD  = twYTD && pcrYTD ? totalWithdrawalsYTD - publicCashRedempYTD : null;
+
+    let publicDebtCashIssues      = pdci ? Number(pdci[0].match(/\S+$/g)[0].replace(/,/g, '')) : null;
+    let interestTreasurySec       = its ? Number(its[0].match(/\S+$/g)[0].replace(/,/g, '')) : null;
+    let snap                      = snp ? Number(snp[0].match(/\S+$/g)[0].replace(/,/g, '')) : null;
+    let unemployInsuranceBenefits = uib ? Number(uib[0].match(/\S+$/g)[0].replace(/,/g, '')) : null;
+    let withheldIncomeEmployTax   = wiet ? Number(wiet[0].match(/\S+$/g)[0].replace(/,/g, '')) : null;
+    let corporationIncomeTax      = cit ? Number(cit[0].match(/\S+$/g)[0].replace(/,/g, '')) : null;
+    let totalCashFTDs             = tcf ? Number(tcf[0].match(/\S+$/g)[0].replace(/,/g, '')) : null;
+
+    return {
+      date: statement.date,
+      totalWithdrawalsMTD,
+      publicCashRedempMTD,
+      totalNetSpendingMTD,
+      totalWithdrawalsYTD,
+      publicCashRedempYTD,
+      totalNetSpendingYTD,
+      publicDebtCashIssues,
+      interestTreasurySec,
+      snap,
+      unemployInsuranceBenefits,
+      withheldIncomeEmployTax,
+      corporationIncomeTax,
+      totalCashFTDs
+    }
+  })
+}
+
+router.get('/set-numbers', function(req, res) {
+  let setLatest = Object.keys(req.query).length;
+  let order = setLatest ? {order: [['date', 'DESC']], limit: 32} : {}
+
+  Statements.findAll(order)
+    .then(s => {
+      // Pull needed numbers from statements and prepare to save
+      let statements = setNumbers(s);
+
+      let updateStatementPromises = statements.map(statement => 
+        Statements.update(statement, { where: { date: statement.date } })
+          .then(success => {})
+          .catch(err => {})
+      )
+
+      // Save to db
+      Promise.all(updateStatementPromises)
+        .then(() => renderPage(res, "4) Set Numbers - SUCCESS update db"))
+        .catch(() => renderPage(res, "4) Set Numbers - FAILED update db"))
+    })
+    .catch((err) => renderPage(res, "4) Set Numbers - FAILED to get statements from db"))
+})
+
+
+/**************************************
+  5. Create Hash Map of Statement Days
 ***************************************/
 
 router.get('/hash-days', function(req, res) {
   hashed = {};
 
-  RawStatements.findAll()
+  Statements.findAll()
     .then(statements => {
       statements.forEach(statement => {
         let day = statement.statementDay;
@@ -310,34 +375,60 @@ router.get('/hash-days', function(req, res) {
         hashed[day].push(statement);
       })
 
-      renderPage(res, `4) Created hash map: ${Object.keys(hashed).length} statement days`);
+      renderPage(res, `5) Created hash map: ${Object.keys(hashed).length} statement days`);
     })
     .catch(() => console.log('Hash days err'))
 })
 
 
 /**************************************
-  5. Find Year Priors and Resave Statements
+  6. Find Year Priors and Resave Statements
 ***************************************/
 
 router.get('/get-priors', function(req, res) {
-  RawStatements.findAll()
+  let setLatest = Object.keys(req.query).length;
+  let order = setLatest ? {order: [['date', 'DESC']], limit: 32} : {}
+
+  Statements.findAll(order)
     .then(statements => {
       let updateStatementPromises = [];
 
       // Create update promises
-      statements.forEach(({ date, statementDay, snap }) => {
+      statements.forEach(statement => {
+        let { 
+          date, 
+          statementDay,
+          totalNetSpendingYTD,
+          snap,
+          publicDebtCashIssues,
+          interestTreasurySec,
+          unemployInsuranceBenefits,
+          withheldIncomeEmployTax,
+          corporationIncomeTax,
+          totalCashFTDs
+        } = statement;
+        
         let yearPrior = date.getFullYear() - 1;
-        let prior = hashed[statementDay].filter(s => s.date.getFullYear() === yearPrior)[0];
+        let pS = hashed[statementDay].filter(s => s.date.getFullYear() === yearPrior)[0];
 
-        if (prior) {
+        if (pS) {
           let yearPriorNums = {
-            snapPriorYear : prior.snap,
-            snapYoY       : snap - prior.snap
+            priorStatementDate            : pS.date,
+            totalNetSpendingYTDYoY        : (totalNetSpendingYTD && pS.totalNetSpendingYTD) ? totalNetSpendingYTD - pS.totalNetSpendingYTD : null,
+            totalNetSpendingYTDYoYPercent : (totalNetSpendingYTD && pS.totalNetSpendingYTD) ? (totalNetSpendingYTD - pS.totalNetSpendingYTD) / pS.totalNetSpendingYTD : null, 
+            snapYoY                       : (snap && pS.snap) ? snap - pS.snap : null,
+            publicDebtCashIssuesYoY       : (publicDebtCashIssues && pS.publicDebtCashIssues) ? publicDebtCashIssues - pS.publicDebtCashIssues : null,
+            interestTreasurySecYoY        : (interestTreasurySec && pS.interestTreasurySec) ? interestTreasurySec - pS.interestTreasurySec : null,
+            interestTreasurySecYoYPercent : (interestTreasurySec && pS.interestTreasurySec) ? (interestTreasurySec - pS.interestTreasurySec) / pS.interestTreasurySec : null,
+            unemployInsuranceBenefitsYoY  : (unemployInsuranceBenefits && pS.unemployInsuranceBenefits) ? unemployInsuranceBenefits - pS.unemployInsuranceBenefits : null,
+            withheldIncomeEmployTaxYoY    : (withheldIncomeEmployTax && pS.withheldIncomeEmployTax) ? withheldIncomeEmployTax - pS.withheldIncomeEmployTax : null,
+            withheldIncomeEmployTaxYoYPercent : (withheldIncomeEmployTax && pS.withheldIncomeEmployTax) ? (withheldIncomeEmployTax - pS.withheldIncomeEmployTax) / pS.withheldIncomeEmployTax : null,
+            corporationIncomeTaxYoY       : (corporationIncomeTax && pS.corporationIncomeTax) ? corporationIncomeTax - pS.corporationIncomeTax : null,
+            totalCashFTDsYoY              : (totalCashFTDs && pS.totalCashFTDs) ? totalCashFTDs - pS.totalCashFTDs : null
           }
 
           updateStatementPromises.push(
-            RawStatements.update(yearPriorNums, { where: { date } })
+            Statements.update(yearPriorNums, { where: { date } })
               .then(success => {})
               .catch(err => {})
           )
@@ -346,10 +437,10 @@ router.get('/get-priors', function(req, res) {
 
       // Save to db
       Promise.all(updateStatementPromises)
-        .then(() => renderPage(res, "5) Find Year Prior and Resave - SUCCESS update db"))
-        .catch(() => renderPage(res, "5) Find Year Prior and Resave - FAILED update db"))
+        .then(() => renderPage(res, "6) Find Year Prior and Resave - SUCCESS update db"))
+        .catch(() => renderPage(res, "6) Find Year Prior and Resave - FAILED update db"))
     })
-    .catch(() => renderPage(res, `5) Failed to get/save priors: ${Object.keys(hashed).length} hashed statement days`))
+    .catch(() => renderPage(res, `6) Failed to get/save priors: ${Object.keys(hashed).length} hashed statement days`))
 })
 
 

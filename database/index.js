@@ -13,26 +13,6 @@ const Statements = db.define('statements', {
     allowNull: false,
     primaryKey: true
   },
-  statementDay: {
-    type: Sequelize.STRING
-  },
-  snap: {
-    type: Sequelize.INTEGER
-  },
-  snapPriorYear: {
-    type: Sequelize.INTEGER
-  },
-  snapYoY: {
-    type: Sequelize.INTEGER
-  }
-});
-
-const RawStatements = db.define('rawStatements', {
-  date: {
-    type: Sequelize.DATE,
-    allowNull: false,
-    primaryKey: true
-  },
   month: {
     type: Sequelize.STRING
   },
@@ -46,19 +26,84 @@ const RawStatements = db.define('rawStatements', {
   statementDay: {
     type: Sequelize.STRING
   },
-  snap: {
+  priorStatementDate: {
+    type: Sequelize.DATE
+  },
+  publicDebtCashIssues: {
     type: Sequelize.INTEGER
   },
-  snapPriorYear: {
+  publicDebtCashIssuesYoY: {
+    type: Sequelize.INTEGER
+  },
+  totalWithdrawalsMTD: {
+    type: Sequelize.INTEGER
+  },
+  publicCashRedempMTD: {
+    type: Sequelize.INTEGER
+  },
+  totalNetSpendingMTD: {
+    type: Sequelize.INTEGER
+  },
+  totalWithdrawalsYTD: {
+    type: Sequelize.INTEGER
+  },
+  publicCashRedempYTD: {
+    type: Sequelize.INTEGER
+  },
+  totalNetSpendingYTD: {
+    type: Sequelize.INTEGER
+  },
+  totalNetSpendingYTDYoY: {
+    type: Sequelize.INTEGER
+  },
+  totalNetSpendingYTDYoYPercent: {
+    type: Sequelize.DECIMAL
+  },
+  interestTreasurySec: {
+    type: Sequelize.INTEGER
+  },
+  interestTreasurySecYoY: {
+    type: Sequelize.INTEGER
+  },
+  interestTreasurySecYoYPercent: {
+    type: Sequelize.DECIMAL
+  },
+  snap: {
     type: Sequelize.INTEGER
   },
   snapYoY: {
     type: Sequelize.INTEGER
-  }
+  },
+  unemployInsuranceBenefits: {
+    type: Sequelize.INTEGER
+  },
+  unemployInsuranceBenefitsYoY: {
+    type: Sequelize.INTEGER
+  },
+  withheldIncomeEmployTax: {
+    type: Sequelize.INTEGER
+  },
+  withheldIncomeEmployTaxYoY: {
+    type: Sequelize.INTEGER
+  },
+  withheldIncomeEmployTaxYoYPercent: {
+    type: Sequelize.DECIMAL
+  },
+  corporationIncomeTax: {
+    type: Sequelize.INTEGER
+  },
+  corporationIncomeTaxYoY: {
+    type: Sequelize.INTEGER
+  },
+  totalCashFTDs: {
+    type: Sequelize.INTEGER
+  },
+  totalCashFTDsYoY: {
+    type: Sequelize.INTEGER
+  },
 });
 
 module.exports = {
   db,
-  Statements,
-  RawStatements
+  Statements
 };

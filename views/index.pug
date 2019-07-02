@@ -36,16 +36,19 @@ block content
         a(
           href='/refetch-statements?q=mod'
           class=""
-        ) 2. Refetch Outstanding Statements - Modify
+        ) 2. Refetch Outstanding Statements - Modify [***]
       br
       br
-      a(href='/set-numbers') 3. Set Numbers (statement days, SNAP, etc)
+      a(href='/set-days') 3. Set Statement Days
       br
       br
-      a(href='/hash-days') 4. Create Hash Map of Statement Days
+      a(href='/set-numbers') 4. Set Numbers (SNAP, etc)
       br
       br
-      a(href='/get-priors') 5. Find Year Priors and Resave Statements
+      a(href='/hash-days') 5. Create Hash Map of Statement Days
+      br
+      br
+      a(href='/get-priors') 6. Find Year Prior and Update Statements
       br
       br
 
@@ -62,12 +65,15 @@ block content
       ) 2. Refetch Outstanding Statements
       br
       br
-      a(href='/set-numbers?q=latest') 3. Set Numbers (statement days, SNAP, etc)
+      a(href='/set-days?q=latest') 3. Set Statement Days [***]
       br
       br
-      a(href='/hash-days') 4. Create Hash Map of Statement Days
+      a(href='/set-numbers?q=latest') 4. Set Numbers (SNAP, etc) [***]
       br
       br
-      a(href='/get-priors') 5. Find Year Priors and Resave Statements
+      a(href='/hash-days') 5. Create Hash Map of Statement Days
+      br
+      br
+      a(href='/get-priors?q=latest') 6. Find Year Prior and Update Statements [***]
       br
       br
